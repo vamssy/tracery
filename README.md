@@ -19,7 +19,7 @@ It is **not** a chatbot. It's the tool you build chatbots (and other LLM pipelin
 |---|---|---|
 | 0 | Project scaffold (repo, docker-compose, CI) | ✅ |
 | 1 | **Headless execution engine** + 5 core nodes + provider/retrieval layers | ✅ |
-| 2 | REST API + Postgres/pgvector persistence | ⏳ |
+| 2 | REST API + Postgres/pgvector persistence | ✅ |
 | 3 | React Flow canvas | ⏳ |
 | 4 | Run UX, trace viewer, deploy endpoints | ⏳ |
 | 5 | Evaluator + Tool nodes, templates, polish | ⏳ |
@@ -69,6 +69,28 @@ You'll get the output plus a full per-node trace (status, latency, tokens, cost)
 cd backend && pytest        # validation, per-node, and end-to-end engine tests
 ruff check .
 ```
+
+## Run the API (Phase 2)
+
+```bash
+docker compose up -d db            # Postgres + pgvector on :5433
+cd backend
+alembic upgrade head               # create the schema
+uvicorn app.main:app --reload      # API on :8000  (docs at /docs)
+```
+
+Then drive it over HTTP — create a KB, ingest a doc, build a workflow, run it, read the trace:
+
+```bash
+API=http://localhost:8000
+KB=$(curl -s $API/knowledge-bases -d '{"name":"policies"}' -H 'content-type: application/json' | jq -r .id)
+curl -s $API/knowledge-bases/$KB/documents -F text='Refunds are issued within 30 days.'
+# ... create a workflow with the retrieval node pointed at $KB, then:
+curl -s $API/workflows/$WF/run -d '{"input":{"question":"refund window?"}}' -H 'content-type: application/json'
+```
+
+Endpoints: `workflows` (CRUD + `/validate` + `/run` + `/runs`), `runs/{id}`,
+`knowledge-bases` (+ `/documents` ingest). Bearer auth is on when `API_KEY` is set.
 
 ### Use a real model
 

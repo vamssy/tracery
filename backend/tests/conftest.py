@@ -46,3 +46,60 @@ async def seeded_services(services: Services) -> Services:
 @pytest.fixture
 def sample_rag_spec() -> dict:
     return json.loads((_BACKEND / "sample_rag.json").read_text())
+
+
+# ─── Integration (DB-backed API) fixtures ────────────────────────────────────
+import os  # noqa: E402
+
+from sqlalchemy import text  # noqa: E402
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
+from sqlalchemy.pool import NullPool  # noqa: E402
+
+TEST_DATABASE_URL = os.environ.get(
+    "TEST_DATABASE_URL",
+    "postgresql+asyncpg://minidify:minidify@localhost:5433/minidify_test",
+)
+
+_TABLES = ["spans", "runs", "deployments", "workflows", "chunks", "knowledge_bases"]
+
+
+@pytest.fixture
+async def db_engine():
+    """Function-scoped engine on the test DB (function scope avoids the pytest-asyncio
+    cross-loop / ScopeMismatch trap). Skips the test if the DB is unreachable."""
+    import app.models  # noqa: F401 — populate metadata
+    from app.db import Base
+
+    engine = create_async_engine(TEST_DATABASE_URL, poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:  # noqa: BLE001
+        pytest.skip(f"test database not available: {e}")
+    yield engine
+    await engine.dispose()
+
+
+@pytest.fixture
+async def api_client(db_engine):
+    """httpx client bound to the app with get_session overridden to the test DB."""
+    from httpx import ASGITransport, AsyncClient
+
+    from app.db import get_session
+    from app.main import app
+
+    async with db_engine.begin() as conn:
+        await conn.execute(text(f"TRUNCATE {', '.join(_TABLES)} RESTART IDENTITY CASCADE"))
+
+    TestSession = async_sessionmaker(db_engine, expire_on_commit=False)
+
+    async def _override_get_session():
+        async with TestSession() as session:
+            yield session
+
+    app.dependency_overrides[get_session] = _override_get_session
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
+    app.dependency_overrides.clear()

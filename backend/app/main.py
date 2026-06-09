@@ -1,18 +1,14 @@
-"""FastAPI application entrypoint.
-
-Phase 0/1: a health check + the node-type catalog (so the frontend can render a
-palette). The full REST surface (workflows / runs / knowledge-bases / deployments)
-is wired in Phase 2.
-"""
+"""FastAPI application entrypoint — wires the REST surface around the engine."""
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import knowledge_bases, runs, workflows
 from app.config import settings
 from app.engine.nodes.base import NODE_REGISTRY
 
-app = FastAPI(title="Mini-Dify API", version="0.1.0")
+app = FastAPI(title="Mini-Dify API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,13 +18,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(workflows.router)
+app.include_router(runs.router)
+app.include_router(knowledge_bases.router)
 
-@app.get("/health")
+
+@app.get("/health", tags=["meta"])
 async def health() -> dict:
     return {"status": "ok", "provider": settings.llm_provider}
 
 
-@app.get("/node-types")
+@app.get("/node-types", tags=["meta"])
 async def node_types() -> dict:
     """Catalog of registered node types and their default ports (for the palette)."""
     out = []

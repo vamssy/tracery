@@ -1,7 +1,7 @@
-# Mini-Dify — dev convenience targets
+# Tracery — dev convenience targets
 PY := backend/.venv/bin/python
 PIP := backend/.venv/bin/pip
-DB_URL ?= postgresql+asyncpg://minidify:minidify@localhost:5433/minidify
+DB_URL ?= postgresql+asyncpg://tracery:tracery@localhost:5433/tracery
 
 .PHONY: setup up down migrate api web test lint cli
 

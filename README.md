@@ -1,4 +1,4 @@
-# Mini-Dify
+# Tracery
 
 A visual workflow builder for RAG and LLM agents. Compose an AI pipeline as a graph
 of typed nodes — **input → retrieval → prompt → model → output** — run it, inspect a
@@ -41,7 +41,7 @@ it, runs each node while threading state between them, and records a trace span 
 node. The **provider layer** is the only place that talks to an LLM/embedding vendor,
 so switching providers is a config change, not a code change.
 
-See [`mini-dify-spec.md`](./mini-dify-spec.md) for the full design (if present), or the
+See [`tracery-spec.md`](./tracery-spec.md) for the full design (if present), or the
 docstrings in `backend/app/engine/`.
 
 ---
@@ -139,7 +139,7 @@ Templates in the canvas: **RAG pipeline**, **RAG + evaluator**, **Calculator too
 ## Repo layout
 
 ```
-mini-dify/
+tracery/
 ├── docker-compose.yml          # Postgres + pgvector
 ├── backend/
 │   ├── app/

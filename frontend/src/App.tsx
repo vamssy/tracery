@@ -91,7 +91,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="topbar__brand">
-          <span className="topbar__logo">◆</span> Mini-Dify
+          <span className="topbar__logo">◆</span> Tracery
         </div>
         <input className="topbar__name" value={workflowName} onChange={(e) => setName(e.target.value)} />
         <span className={`pill ${dirty ? 'pill--warn' : 'pill--ok'}`}>{dirty ? 'unsaved' : workflowId ? 'saved' : 'new'}</span>

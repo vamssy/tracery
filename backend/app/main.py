@@ -10,7 +10,7 @@ from app.config import settings
 from app.engine.graph import validate_graph
 from app.engine.nodes.base import NODE_REGISTRY
 
-app = FastAPI(title="Mini-Dify API", version="0.2.0")
+app = FastAPI(title="Tracery API", version="0.2.0")
 
 app.add_middleware(
     CORSMiddleware,

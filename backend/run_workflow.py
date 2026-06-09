@@ -56,7 +56,7 @@ def _print_trace(result) -> None:
 
 
 async def main() -> int:
-    ap = argparse.ArgumentParser(description="Run a Mini-Dify workflow headless.")
+    ap = argparse.ArgumentParser(description="Run a Tracery workflow headless.")
     ap.add_argument("spec", help="path to a graph-spec JSON file")
     ap.add_argument("--input", default="{}", help='JSON object or @path/to/input.json')
     ap.add_argument("--kb", help="optional KB seed file (JSON: {kb_id, documents[]})")

@@ -28,7 +28,7 @@ export function Canvas() {
   const onDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
-      const type = e.dataTransfer.getData('application/mini-dify')
+      const type = e.dataTransfer.getData('application/tracery')
       if (!type) return
       const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
       addNode(type, position)

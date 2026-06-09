@@ -1,7 +1,7 @@
 [project]
-name = "mini-dify-backend"
+name = "tracery-backend"
 version = "0.1.0"
-description = "Mini-Dify — a visual workflow builder for RAG and LLM agents (backend + execution engine)"
+description = "Tracery — a visual workflow builder for RAG and LLM agents (backend + execution engine)"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",

@@ -13,7 +13,7 @@ export function Palette() {
             className="palette__item"
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData('application/mini-dify', type)
+              e.dataTransfer.setData('application/tracery', type)
               e.dataTransfer.effectAllowed = 'move'
             }}
           >

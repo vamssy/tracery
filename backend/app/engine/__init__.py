@@ -1,4 +1,4 @@
-"""The execution engine — the heart of Mini-Dify.
+"""The execution engine — the heart of Tracery.
 
 Public surface:
     run_workflow(spec, input, services) -> RunResult

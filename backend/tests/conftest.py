@@ -57,7 +57,7 @@ from sqlalchemy.pool import NullPool  # noqa: E402
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://minidify:minidify@localhost:5433/minidify_test",
+    "postgresql+asyncpg://tracery:tracery@localhost:5433/tracery_test",
 )
 
 _TABLES = ["spans", "runs", "deployments", "workflows", "chunks", "knowledge_bases"]

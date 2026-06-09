@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# backend/app/config.py -> parents[2] == mini-dify/ (repo root)
+# backend/app/config.py -> parents[2] == tracery/ (repo root)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Database
-    database_url: str = "postgresql+asyncpg://minidify:minidify@localhost:5433/minidify"
+    database_url: str = "postgresql+asyncpg://tracery:tracery@localhost:5433/tracery"
 
     # Provider layer
     llm_provider: str = "mock"  # "mock" | "litellm"

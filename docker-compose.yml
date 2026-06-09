@@ -1,0 +1,18 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: minidify-db
+    environment:
+      POSTGRES_USER: minidify
+      POSTGRES_PASSWORD: minidify
+      POSTGRES_DB: minidify
+    ports:
+      # host 5433 -> container 5432, so it never clashes with a local Postgres
+      - "5433:5432"
+    volumes:
+      - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minidify -d minidify"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

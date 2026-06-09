@@ -1,0 +1,21 @@
+{
+  "kb_id": "kb_123",
+  "documents": [
+    {
+      "text": "Refund policy. Customers may request a full refund within 30 days of purchase. Refunds are issued to the original payment method and processed within 5 to 7 business days. Items must be returned in their original condition. Digital goods are non-refundable once downloaded.",
+      "metadata": { "source": "refund_policy", "title": "Refund Policy" }
+    },
+    {
+      "text": "Shipping policy. Standard shipping takes 3 to 5 business days within the continental United States. Express shipping delivers in 1 to 2 business days for an additional fee. We ship internationally to most countries with delivery in 7 to 14 business days.",
+      "metadata": { "source": "shipping_policy", "title": "Shipping Policy" }
+    },
+    {
+      "text": "Warranty. All hardware products include a 1 year limited warranty covering manufacturing defects. The warranty does not cover accidental damage or normal wear and tear. Extended warranty plans are available for purchase at checkout.",
+      "metadata": { "source": "warranty", "title": "Warranty" }
+    },
+    {
+      "text": "Support hours. Customer support is available Monday through Friday from 9am to 6pm Pacific Time. Email support is answered within one business day. Priority phone support is included with all business tier subscriptions.",
+      "metadata": { "source": "support", "title": "Support Hours" }
+    }
+  ]
+}

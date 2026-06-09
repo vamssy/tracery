@@ -96,13 +96,16 @@ export const useCanvas = create<CanvasState>((set, get) => ({
   },
 
   updateNodeConfig: (id, config) => {
-    set({
-      nodes: get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, config } } : n)),
-      dirty: true,
+    const nodes = get().nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, config } } : n))
+    // A config change can remove a port (e.g. deleting a {{var}} from a template).
+    // Keep only edges whose endpoints still exist and stay type-compatible. (Do NOT
+    // reuse isValidConnection here — its one-edge-per-port rule would drop valid edges.)
+    const edges = get().edges.filter((e) => {
+      const st = portType(nodes.find((n) => n.id === e.source), e.sourceHandle, 'outputs')
+      const dt = portType(nodes.find((n) => n.id === e.target), e.targetHandle, 'inputs')
+      return !!st && !!dt && typesCompatible(st, dt)
     })
-    // dropping a template var (etc.) can orphan an edge into a now-missing port — prune those
-    const valid = get().isValidConnection
-    set({ edges: get().edges.filter((e) => valid({ source: e.source, target: e.target, sourceHandle: e.sourceHandle, targetHandle: e.targetHandle } as Connection)) })
+    set({ nodes, edges, dirty: true })
   },
 
   deleteNode: (id) =>

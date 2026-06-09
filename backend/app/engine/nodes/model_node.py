@@ -6,17 +6,24 @@ import json
 from typing import TYPE_CHECKING
 
 from app.config import settings
-from app.engine.nodes.base import Node, NodeError, Port, Ports, register
+from app.engine.nodes.base import Node, NodeError, Port, Ports, TransientNodeError, register
 from app.services.providers import ProviderError
 
 if TYPE_CHECKING:
     from app.engine.context import RunContext
+
+# substrings that mark a provider error as worth retrying
+_TRANSIENT_MARKERS = (
+    "rate limit", "rate_limit", "429", "timeout", "timed out",
+    "500", "502", "503", "overloaded", "unavailable",
+)
 
 
 @register
 class ModelNode(Node):
     type = "model"
     timeout_s = 120  # model calls get longer than retrieval
+    max_retries = 2  # retry transient provider errors with backoff
 
     def declare_ports(self, config: dict) -> Ports:
         # Either `prompt` or `messages` may feed the model; neither is required at
@@ -54,6 +61,9 @@ class ModelNode(Node):
         try:
             completion = await ctx.services.providers.complete(model, messages, **params)
         except ProviderError as e:
+            msg = str(e).lower()
+            if any(m in msg for m in _TRANSIENT_MARKERS):
+                raise TransientNodeError(f"model: transient provider error: {e}") from e
             raise NodeError(f"model: provider error: {e}") from e
 
         ctx.record_usage(completion.tokens_in, completion.tokens_out, completion.cost_usd)

@@ -4,7 +4,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import knowledge_bases, runs, workflows
+from app.api import deployments, knowledge_bases, runs, workflows
 from app.api.schemas import ValidateRequest, ValidateResult
 from app.config import settings
 from app.engine.graph import validate_graph
@@ -23,6 +23,7 @@ app.add_middleware(
 app.include_router(workflows.router)
 app.include_router(runs.router)
 app.include_router(knowledge_bases.router)
+app.include_router(deployments.router)
 
 
 @app.get("/health", tags=["meta"])

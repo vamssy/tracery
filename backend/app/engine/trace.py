@@ -21,6 +21,7 @@ class Span:
     started_at: float = 0.0  # epoch seconds
     ended_at: float | None = None
     latency_ms: int | None = None
+    attempts: int = 1
     inputs: Any = None
     outputs: Any = None
     # model-node only:

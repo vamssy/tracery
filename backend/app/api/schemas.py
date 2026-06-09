@@ -49,6 +49,7 @@ class SpanOut(BaseModel):
     node_type: str
     ordinal: int
     status: str
+    attempts: int = 1
     inputs: Any = None
     outputs: Any = None
     latency_ms: int | None = None

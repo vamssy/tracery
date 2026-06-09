@@ -46,6 +46,11 @@ class NodeError(Exception):
     """A node failed at run time. In v1 this fails the whole run."""
 
 
+class TransientNodeError(NodeError):
+    """A failure the executor may retry (rate limit, timeout, 5xx). Subclass of
+    NodeError so it still fails the run if retries are exhausted."""
+
+
 class NodeConfigError(Exception):
     """A node's config is invalid (caught at graph-validation time, not run time)."""
 
@@ -57,6 +62,8 @@ class Node(ABC):
     type: str = "base"
     # default per-call timeout; a node type may override (model > retrieval).
     timeout_s: float | None = None
+    # how many times the executor may retry a TransientNodeError (with backoff).
+    max_retries: int = 0
 
     @abstractmethod
     def declare_ports(self, config: dict) -> Ports:

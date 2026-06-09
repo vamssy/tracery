@@ -21,7 +21,7 @@ It is **not** a chatbot. It's the tool you build chatbots (and other LLM pipelin
 | 1 | **Headless execution engine** + 5 core nodes + provider/retrieval layers | ✅ |
 | 2 | REST API + Postgres/pgvector persistence | ✅ |
 | 3 | React Flow canvas (palette, typed handles, config, save/validate) | ✅ |
-| 4 | Run UX, trace viewer, deploy endpoints | ⏳ |
+| 4 | Run UX, trace viewer, deploy endpoints, retries | ✅ |
 | 5 | Evaluator + Tool nodes, templates, polish | ⏳ |
 
 ---

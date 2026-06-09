@@ -59,6 +59,7 @@ export interface SpanOut {
   node_type: string
   ordinal: number
   status: string
+  attempts?: number
   inputs?: any
   outputs?: any
   latency_ms?: number | null

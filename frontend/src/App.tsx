@@ -5,25 +5,26 @@ import { ApiError, api } from './api/client'
 import { Canvas } from './canvas/Canvas'
 import { Palette } from './canvas/Palette'
 import { ConfigPanel } from './panels/ConfigPanel'
+import { DeployModal } from './panels/DeployModal'
+import { RunModal } from './panels/RunModal'
 import { useCanvas } from './store/store'
 import { ragTemplate } from './templates'
 import type { ValidateResult, WorkflowSummary } from './types'
 
 export default function App() {
-  // individual selectors — zustand v5 re-renders on every call for object selectors
   const workflowId = useCanvas((s) => s.workflowId)
   const workflowName = useCanvas((s) => s.workflowName)
   const dirty = useCanvas((s) => s.dirty)
   const nodeCount = useCanvas((s) => s.nodes.length)
   const setName = useCanvas((s) => s.setName)
-  const setSavedAs = useCanvas((s) => s.setSavedAs)
   const newWorkflow = useCanvas((s) => s.newWorkflow)
   const loadGraphSpec = useCanvas((s) => s.loadGraphSpec)
-  const toGraphSpec = useCanvas((s) => s.toGraphSpec)
 
   const [workflows, setWorkflows] = useState<WorkflowSummary[]>([])
   const [validation, setValidation] = useState<ValidateResult | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [runOpen, setRunOpen] = useState(false)
+  const [deployOpen, setDeployOpen] = useState(false)
 
   const refreshWorkflows = () => api.listWorkflows().then(setWorkflows).catch(() => {})
   useEffect(() => {
@@ -35,27 +36,38 @@ export default function App() {
     setTimeout(() => setToast(null), 2500)
   }
 
-  const save = async () => {
-    const spec = toGraphSpec()
+  // Save the current canvas; returns the workflow id (reads live store state so it
+  // is safe to call from modals). Returns null on failure.
+  const save = async (): Promise<string | null> => {
+    const st = useCanvas.getState()
+    const spec = st.toGraphSpec()
     try {
-      if (workflowId) {
-        await api.updateWorkflow(workflowId, { name: workflowName, graph_spec: spec })
-        setSavedAs(workflowId, workflowName)
+      if (st.workflowId) {
+        await api.updateWorkflow(st.workflowId, { name: st.workflowName, graph_spec: spec })
+        st.setSavedAs(st.workflowId, st.workflowName)
         flash('Saved')
-      } else {
-        const wf = await api.createWorkflow(workflowName, spec)
-        setSavedAs(wf.id, wf.name)
-        flash('Created')
+        refreshWorkflows()
+        return st.workflowId
       }
+      const wf = await api.createWorkflow(st.workflowName, spec)
+      st.setSavedAs(wf.id, wf.name)
+      flash('Created')
       refreshWorkflows()
+      return wf.id
     } catch (e) {
       flash(`Save failed: ${(e as Error).message}`)
+      return null
     }
+  }
+
+  const ensureSaved = async (): Promise<string | null> => {
+    const st = useCanvas.getState()
+    return st.workflowId && !st.dirty ? st.workflowId : save()
   }
 
   const validate = async () => {
     try {
-      setValidation(await api.validate(toGraphSpec()))
+      setValidation(await api.validate(useCanvas.getState().toGraphSpec()))
     } catch (e) {
       if (e instanceof ApiError) flash(`Validate failed: ${e.message}`)
     }
@@ -107,6 +119,12 @@ export default function App() {
         <button className="btn btn--ghost" onClick={validate} disabled={!nodeCount}>
           Validate
         </button>
+        <button className="btn btn--ghost" onClick={() => setRunOpen(true)} disabled={!nodeCount}>
+          ▶ Run
+        </button>
+        <button className="btn btn--ghost" onClick={() => setDeployOpen(true)} disabled={!nodeCount}>
+          Deploy
+        </button>
         <button className="btn btn--primary" onClick={save} disabled={!nodeCount}>
           Save
         </button>
@@ -130,6 +148,8 @@ export default function App() {
         </div>
       </ReactFlowProvider>
 
+      {runOpen && <RunModal ensureSaved={ensureSaved} onClose={() => setRunOpen(false)} />}
+      {deployOpen && <DeployModal ensureSaved={ensureSaved} onClose={() => setDeployOpen(false)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   )

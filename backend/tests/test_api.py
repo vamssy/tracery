@@ -100,3 +100,35 @@ async def test_run_invalid_graph_returns_422(api_client):
     wf = (await api_client.post("/workflows", json={"name": "empty", "graph_spec": {"nodes": [], "edges": []}})).json()
     r = await api_client.post(f"/workflows/{wf['id']}/run", json={"input": {}})
     assert r.status_code == 422
+
+
+async def test_deploy_freeze_and_invoke(api_client, sample_rag_spec):
+    kb = (await api_client.post("/knowledge-bases", json={"name": "kb"})).json()
+    await api_client.post(f"/knowledge-bases/{kb['id']}/documents", data={"text": "Refunds within 30 days."})
+    spec = _spec_with_kb(sample_rag_spec, kb["id"])
+    wf = (await api_client.post("/workflows", json={"name": "rag", "graph_spec": spec})).json()
+
+    dep = (await api_client.post(f"/workflows/{wf['id']}/deploy")).json()
+    assert dep["endpoint_url"].endswith(f"/deployments/{dep['deployment_key']}/invoke")
+    assert dep["api_key"].startswith("mdk_")
+
+    invoke_path = f"/deployments/{dep['deployment_key']}/invoke"
+
+    # wrong / missing key
+    assert (await api_client.post(invoke_path, json={"input": {"question": "q"}})).status_code == 401
+    assert (
+        await api_client.post(invoke_path, json={"input": {"question": "q"}}, headers={"x-api-key": "nope"})
+    ).status_code == 401
+
+    key_header = {"x-api-key": dep["api_key"]}
+    payload = {"input": {"question": "refund window?"}}
+
+    # valid key runs the frozen spec
+    r = await api_client.post(invoke_path, json=payload, headers=key_header)
+    assert r.status_code == 200, r.text
+    assert r.json()["output"]
+
+    # freeze guarantee: editing the workflow to an empty graph must NOT affect the deployment
+    await api_client.put(f"/workflows/{wf['id']}", json={"graph_spec": {"nodes": [], "edges": []}})
+    r = await api_client.post(invoke_path, json=payload, headers=key_header)
+    assert r.status_code == 200, "frozen spec should still run after the workflow was edited"

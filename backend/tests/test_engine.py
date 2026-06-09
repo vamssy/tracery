@@ -119,3 +119,59 @@ def test_graphspec_roundtrips(sample_rag_spec):
     spec = GraphSpec.model_validate(sample_rag_spec)
     assert len(spec.nodes) == 5
     assert len(spec.edges) == 5
+
+
+# ─── Retries (spec §6.5) ─────────────────────────────────────────────────────
+from app.engine.context import Services  # noqa: E402
+from app.services.providers import MockProvider, ProviderError  # noqa: E402
+from app.services.retrieval import InMemoryStore, RetrievalService  # noqa: E402
+
+
+class _FlakyProvider(MockProvider):
+    """Raises a transient provider error for the first `fails` calls, then succeeds."""
+
+    def __init__(self, fails: int):
+        self.fails = fails
+        self.calls = 0
+
+    async def complete(self, model, messages, **params):
+        self.calls += 1
+        if self.calls <= self.fails:
+            raise ProviderError("rate limit exceeded (429)")
+        return await super().complete(model, messages, **params)
+
+
+def _model_services(provider):
+    return Services(providers=provider, retrieval=RetrievalService(InMemoryStore(), provider))
+
+
+_MODEL_GRAPH = {
+    "nodes": [
+        _node("in", "input", {"fields": [{"name": "prompt", "type": "string"}]}),
+        _node("m", "model", {"model": "x"}),
+        _node("out", "output", {}),
+    ],
+    "edges": [
+        _edge("e1", "in", "prompt", "m", "prompt"),
+        _edge("e2", "m", "completion", "out", "result"),
+    ],
+}
+
+
+async def test_model_retries_transient_then_succeeds():
+    provider = _FlakyProvider(fails=1)
+    result = await run_workflow(_MODEL_GRAPH, {"prompt": "hi"}, _model_services(provider))
+    assert result.status == "completed"
+    model_span = next(s for s in result.spans if s.node_type == "model")
+    assert model_span.attempts == 2  # failed once, retried, succeeded
+    assert provider.calls == 2
+
+
+async def test_model_fails_after_exhausting_retries():
+    provider = _FlakyProvider(fails=99)  # always fails
+    result = await run_workflow(_MODEL_GRAPH, {"prompt": "hi"}, _model_services(provider))
+    assert result.status == "failed"
+    assert result.failed_node_id == "m"
+    model_span = next(s for s in result.spans if s.node_type == "model")
+    assert model_span.attempts == 3  # 1 + max_retries(2)
+    assert provider.calls == 3

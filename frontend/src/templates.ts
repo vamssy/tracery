@@ -21,3 +21,38 @@ export function ragTemplate(): GraphSpec {
     ],
   }
 }
+
+// RAG + an evaluator that scores the model's answer (a quality side-channel).
+export function ragEvalTemplate(): GraphSpec {
+  const g = ragTemplate()
+  g.nodes.push({
+    id: 'n_eval',
+    type: 'evaluator',
+    position: { x: 1060, y: 400 },
+    config: { strategy: 'keyword', criteria: 'refund, 30 days', pass_threshold: 0.5 },
+  })
+  g.edges.push({ id: 'e6', source: 'n_model', source_port: 'completion', target: 'n_eval', target_port: 'output' })
+  return g
+}
+
+// A tiny "agent-ish" workflow: a calculator tool driven straight from input.
+export function calcTemplate(): GraphSpec {
+  return {
+    version: '1.0',
+    nodes: [
+      { id: 'n_input', type: 'input', position: { x: 80, y: 120 }, config: { fields: [{ name: 'expression', type: 'string', required: true }] } },
+      { id: 'n_tool', type: 'tool', position: { x: 420, y: 120 }, config: { tool: 'calculator' } },
+      { id: 'n_output', type: 'output', position: { x: 760, y: 120 }, config: { format: 'json' } },
+    ],
+    edges: [
+      { id: 'e1', source: 'n_input', source_port: 'expression', target: 'n_tool', target_port: 'expression' },
+      { id: 'e2', source: 'n_tool', source_port: 'result', target: 'n_output', target_port: 'result' },
+    ],
+  }
+}
+
+export const TEMPLATES: { name: string; build: () => GraphSpec }[] = [
+  { name: 'RAG pipeline', build: ragTemplate },
+  { name: 'RAG + evaluator', build: ragEvalTemplate },
+  { name: 'Calculator tool', build: calcTemplate },
+]

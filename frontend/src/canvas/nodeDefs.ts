@@ -93,6 +93,37 @@ export const NODE_DEFS: Record<string, NodeDef> = {
     defaultConfig: { format: 'text' },
     declarePorts: () => ({ inputs: [{ name: 'result', type: 'any' }], outputs: [] }),
   },
+  evaluator: {
+    type: 'evaluator',
+    label: 'Evaluator',
+    description: 'Score an output (judge / keyword / regex)',
+    accent: '#ec4899',
+    defaultConfig: { strategy: 'keyword', criteria: '', pass_threshold: 0.5 },
+    declarePorts: () => ({
+      inputs: [
+        { name: 'output', type: 'string' },
+        { name: 'reference', type: 'string', required: false },
+      ],
+      outputs: [
+        { name: 'score', type: 'number' },
+        { name: 'passed', type: 'json' },
+      ],
+    }),
+  },
+  tool: {
+    type: 'tool',
+    label: 'Tool',
+    description: 'Allow-listed function (calculator / http_get)',
+    accent: '#14b8a6',
+    defaultConfig: { tool: 'calculator' },
+    declarePorts: (c) => {
+      let inputs: { name: string; type: PortType; required?: boolean }[]
+      if (c.tool === 'http_get') inputs = [{ name: 'url', type: 'string', required: false }]
+      else if (c.tool === 'calculator') inputs = [{ name: 'expression', type: 'string', required: false }]
+      else inputs = [{ name: 'input', type: 'any', required: false }]
+      return { inputs, outputs: [{ name: 'result', type: 'json' }] }
+    },
+  },
 }
 
 export function declarePorts(type: string, config: Record<string, any>): Ports {
@@ -100,4 +131,4 @@ export function declarePorts(type: string, config: Record<string, any>): Ports {
   return def ? def.declarePorts(config || {}) : { inputs: [], outputs: [] }
 }
 
-export const NODE_ORDER = ['input', 'retrieval', 'prompt', 'model', 'output']
+export const NODE_ORDER = ['input', 'retrieval', 'prompt', 'model', 'output', 'evaluator', 'tool']

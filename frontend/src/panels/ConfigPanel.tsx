@@ -48,6 +48,8 @@ export function ConfigPanel() {
       {node.type === 'prompt' && <PromptConfig config={config} update={update} />}
       {node.type === 'model' && <ModelConfig config={config} update={update} />}
       {node.type === 'output' && <OutputConfig config={config} update={update} />}
+      {node.type === 'evaluator' && <EvaluatorConfig config={config} update={update} />}
+      {node.type === 'tool' && <ToolConfig config={config} update={update} />}
     </aside>
   )
 }
@@ -236,6 +238,85 @@ function OutputConfig({ config, update }: CfgProps) {
           <option value="json">json</option>
         </select>
       </Field>
+    </div>
+  )
+}
+
+function EvaluatorConfig({ config, update }: CfgProps) {
+  const strategy = config.strategy || 'keyword'
+  const criteriaHint =
+    strategy === 'keyword'
+      ? 'comma-separated keywords'
+      : strategy === 'regex'
+        ? 'a regular expression'
+        : 'what a good answer looks like'
+  return (
+    <div className="config__body">
+      <Field label="Strategy">
+        <select className="input" value={strategy} onChange={(e) => update({ strategy: e.target.value })}>
+          <option value="keyword">keyword</option>
+          <option value="regex">regex</option>
+          <option value="llm_judge">llm_judge</option>
+        </select>
+      </Field>
+      <Field label={`Criteria · ${criteriaHint}`}>
+        <textarea
+          className="input input--area"
+          rows={3}
+          value={config.criteria || ''}
+          onChange={(e) => update({ criteria: e.target.value })}
+        />
+      </Field>
+      <Field label="Pass threshold">
+        <input
+          className="input"
+          type="number"
+          step={0.05}
+          min={0}
+          max={1}
+          value={config.pass_threshold ?? 0.5}
+          onChange={(e) => update({ pass_threshold: Number(e.target.value) })}
+        />
+      </Field>
+      {strategy === 'llm_judge' && (
+        <Field label="Judge model (LiteLLM id)">
+          <input className="input" value={config.model || ''} placeholder="(default)" onChange={(e) => update({ model: e.target.value })} />
+        </Field>
+      )}
+    </div>
+  )
+}
+
+function ToolConfig({ config, update }: CfgProps) {
+  const tool = config.tool || 'calculator'
+  return (
+    <div className="config__body">
+      <Field label="Tool">
+        <select className="input" value={tool} onChange={(e) => update({ tool: e.target.value })}>
+          <option value="calculator">calculator</option>
+          <option value="http_get">http_get</option>
+        </select>
+      </Field>
+      {tool === 'http_get' && (
+        <>
+          <Field label="Allowed domains · comma-separated">
+            <input
+              className="input"
+              value={(config.allowed_domains || []).join(', ')}
+              placeholder="example.com, api.example.com"
+              onChange={(e) => update({ allowed_domains: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
+            />
+          </Field>
+          <Field label="Timeout (s)">
+            <input className="input" type="number" min={1} value={config.timeout ?? 10} onChange={(e) => update({ timeout: Number(e.target.value) })} />
+          </Field>
+        </>
+      )}
+      <div className="muted" style={{ fontSize: 12 }}>
+        {tool === 'calculator'
+          ? 'Wire a string into `expression`. Safe arithmetic only.'
+          : 'Wire a string into `url`. Only allow-listed domains are fetched.'}
+      </div>
     </div>
   )
 }

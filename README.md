@@ -22,7 +22,7 @@ It is **not** a chatbot. It's the tool you build chatbots (and other LLM pipelin
 | 2 | REST API + Postgres/pgvector persistence | ✅ |
 | 3 | React Flow canvas (palette, typed handles, config, save/validate) | ✅ |
 | 4 | Run UX, trace viewer, deploy endpoints, retries | ✅ |
-| 5 | Evaluator + Tool nodes, templates, polish | ⏳ |
+| 5 | Evaluator + Tool nodes, template gallery | ✅ |
 
 ---
 
@@ -129,8 +129,10 @@ so the same workflow runs against OpenAI, Anthropic, Groq, etc. unchanged.
 | `prompt` | Render a `{{template}}` | one port per var → `prompt:string` |
 | `model` | Call an LLM via the provider layer | `prompt`/`messages` → `completion:string` |
 | `output` | Terminal sink — the run's result | `result:any` → — |
+| `evaluator` | Score an output (llm_judge / keyword / regex) | `output:string`,`reference?` → `score:number`,`passed:json` |
+| `tool` | Allow-listed function (calculator / http_get) | tool-specific → `result:json` |
 
-Evaluator and Tool nodes land in Phase 5.
+Templates in the canvas: **RAG pipeline**, **RAG + evaluator**, **Calculator tool**.
 
 ---
 

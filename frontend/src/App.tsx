@@ -8,7 +8,7 @@ import { ConfigPanel } from './panels/ConfigPanel'
 import { DeployModal } from './panels/DeployModal'
 import { RunModal } from './panels/RunModal'
 import { useCanvas } from './store/store'
-import { ragTemplate } from './templates'
+import { TEMPLATES } from './templates'
 import type { ValidateResult, WorkflowSummary } from './types'
 
 export default function App() {
@@ -80,8 +80,10 @@ export default function App() {
     setValidation(null)
   }
 
-  const loadSample = () => {
-    loadGraphSpec(ragTemplate(), null, 'RAG starter')
+  const loadTemplate = (name: string) => {
+    const t = TEMPLATES.find((x) => x.name === name)
+    if (!t) return
+    loadGraphSpec(t.build(), null, name)
     setValidation(null)
   }
 
@@ -110,9 +112,21 @@ export default function App() {
             </option>
           ))}
         </select>
-        <button className="btn btn--ghost" onClick={loadSample}>
-          Sample
-        </button>
+        <select
+          className="topbar__select"
+          value=""
+          onChange={(e) => {
+            loadTemplate(e.target.value)
+            e.currentTarget.value = ''
+          }}
+        >
+          <option value="">Templates…</option>
+          {TEMPLATES.map((t) => (
+            <option key={t.name} value={t.name}>
+              {t.name}
+            </option>
+          ))}
+        </select>
         <button className="btn btn--ghost" onClick={newWorkflow}>
           New
         </button>

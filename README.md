@@ -20,7 +20,7 @@ It is **not** a chatbot. It's the tool you build chatbots (and other LLM pipelin
 | 0 | Project scaffold (repo, docker-compose, CI) | ✅ |
 | 1 | **Headless execution engine** + 5 core nodes + provider/retrieval layers | ✅ |
 | 2 | REST API + Postgres/pgvector persistence | ✅ |
-| 3 | React Flow canvas | ⏳ |
+| 3 | React Flow canvas (palette, typed handles, config, save/validate) | ✅ |
 | 4 | Run UX, trace viewer, deploy endpoints | ⏳ |
 | 5 | Evaluator + Tool nodes, templates, polish | ⏳ |
 
@@ -91,6 +91,19 @@ curl -s $API/workflows/$WF/run -d '{"input":{"question":"refund window?"}}' -H '
 
 Endpoints: `workflows` (CRUD + `/validate` + `/run` + `/runs`), `runs/{id}`,
 `knowledge-bases` (+ `/documents` ingest). Bearer auth is on when `API_KEY` is set.
+
+## Run the canvas (Phase 3)
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:5173
+```
+
+Point it at the API with `VITE_API_BASE` (defaults to `http://localhost:8000`).
+Drag nodes from the palette, wire typed ports (incompatible connections are
+rejected on the canvas), configure each node in the side panel, and **Validate** /
+**Save** against the backend. The **Sample** button drops in the canonical RAG graph.
 
 ### Use a real model
 

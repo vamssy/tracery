@@ -39,6 +39,17 @@ async def _chunk_count(session: AsyncSession, kb_id: uuid.UUID) -> int:
     return (await session.execute(select(func.count(Chunk.id)).where(Chunk.kb_id == kb_id))).scalar_one()
 
 
+@router.get("", response_model=list[KBOut])
+async def list_kbs(session: AsyncSession = Depends(get_session)):
+    rows = (
+        await session.execute(select(KnowledgeBase).order_by(KnowledgeBase.created_at.desc()))
+    ).scalars().all()
+    return [
+        KBOut(id=kb.id, name=kb.name, created_at=kb.created_at, chunk_count=await _chunk_count(session, kb.id))
+        for kb in rows
+    ]
+
+
 @router.post("", response_model=KBOut, status_code=201)
 async def create_kb(body: KBCreate, session: AsyncSession = Depends(get_session)):
     kb = KnowledgeBase(name=body.name)

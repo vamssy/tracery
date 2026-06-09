@@ -5,7 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import knowledge_bases, runs, workflows
+from app.api.schemas import ValidateRequest, ValidateResult
 from app.config import settings
+from app.engine.graph import validate_graph
 from app.engine.nodes.base import NODE_REGISTRY
 
 app = FastAPI(title="Mini-Dify API", version="0.2.0")
@@ -26,6 +28,13 @@ app.include_router(knowledge_bases.router)
 @app.get("/health", tags=["meta"])
 async def health() -> dict:
     return {"status": "ok", "provider": settings.llm_provider}
+
+
+@app.post("/validate", response_model=ValidateResult, tags=["meta"])
+async def validate_spec(body: ValidateRequest) -> ValidateResult:
+    """Stateless graph validation — used by the editor before a workflow is saved."""
+    errors = validate_graph(body.graph_spec or {})
+    return ValidateResult(valid=not errors, errors=errors)
 
 
 @app.get("/node-types", tags=["meta"])

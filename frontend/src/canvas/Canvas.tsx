@@ -4,7 +4,6 @@ import {
   ReactFlow,
   useReactFlow,
 } from '@xyflow/react'
-import { useState } from 'react'
 import { Popover } from '../components/Popover'
 import { Glyph } from '../icons'
 import { useCanvas } from '../store/store'
@@ -15,8 +14,6 @@ import { TraceryNode } from './TraceryNode'
 const nodeTypes = Object.fromEntries(Object.keys(NODE_DEFS).map((t) => [t, TraceryNode]))
 const edgeTypes = { tracery: TraceryEdge }
 const defaultEdgeOptions = { type: 'tracery' }
-
-const TABS = ['Editor', 'Executions', 'Tests']
 
 export function Canvas() {
   const { screenToFlowPosition } = useReactFlow()
@@ -31,7 +28,6 @@ export function Canvas() {
   const palette = useCanvas((s) => s.palette)
   const openPalette = useCanvas((s) => s.openPalette)
   const closePalette = useCanvas((s) => s.closePalette)
-  const [tab, setTab] = useState('Editor')
 
   const pick = (type: string) => {
     const pal = useCanvas.getState().palette
@@ -75,13 +71,6 @@ export function Canvas() {
         <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgba(255,255,255,0.05)" />
       </ReactFlow>
 
-      <div className="cv-tabs">
-        {TABS.map((t) => (
-          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
-      </div>
       <button className="cv-add" title="Add node" onClick={(e) => openPalette(e.clientX, e.clientY + 10, null)}>
         <Glyph name="plus" size={18} />
       </button>

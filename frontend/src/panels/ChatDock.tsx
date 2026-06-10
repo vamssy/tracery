@@ -1,22 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
-import { NODE_DEFS } from '../canvas/nodeDefs'
-import { Glyph, Icon } from '../icons'
-import type { RunOut, SpanOut } from '../types'
+import { Glyph } from '../icons'
+import type { RunOut } from '../types'
+import { TraceView } from './TraceView'
 
 export interface ChatMsg {
   role: 'user' | 'assistant'
   text: string
   err?: boolean
-}
-
-function colorJSON(obj: any): string {
-  if (obj === undefined || obj === null) return ''
-  return JSON.stringify(obj, null, 2)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
-    .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
-    .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
 }
 
 export function ChatDock({
@@ -31,14 +21,10 @@ export function ChatDock({
   trace: RunOut | null
 }) {
   const [text, setText] = useState('')
-  const [spanIdx, setSpanIdx] = useState(0)
   const endRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: 'end' })
   }, [messages])
-  useEffect(() => {
-    setSpanIdx(0)
-  }, [trace])
 
   const send = () => {
     const v = text.trim()
@@ -46,9 +32,6 @@ export function ChatDock({
     onSend(v)
     setText('')
   }
-
-  const spans = trace?.trace.spans ?? []
-  const span: SpanOut | undefined = spans[spanIdx]
 
   return (
     <div className="chat">
@@ -106,73 +89,7 @@ export function ChatDock({
             </span>
           )}
         </div>
-        <div className="logs-body">
-          {spans.length === 0 ? (
-            <div className="logs-empty">Run the workflow to see a per-node trace here.</div>
-          ) : (
-            <>
-              <div className="logs-tree">
-                {spans.map((s, i) => {
-                  const t = NODE_DEFS[s.node_type]
-                  return (
-                    <div
-                      key={i}
-                      className={`lt-item${i === spanIdx ? ' on' : ''}`}
-                      style={{ ['--n-color' as any]: t?.color }}
-                      onClick={() => setSpanIdx(i)}
-                    >
-                      <span className="lt-ico">
-                        <Icon type={s.node_type} size={15} />
-                      </span>
-                      {s.node_id}
-                      <span className={`lt-dot ${s.status}`} />
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="logs-detail">
-                {span && (
-                  <>
-                    <div className="ld-h" style={{ ['--n-color' as any]: NODE_DEFS[span.node_type]?.color }}>
-                      <span className="ld-ico">
-                        <Icon type={span.node_type} size={16} />
-                      </span>
-                      {span.node_id}
-                    </div>
-                    <div className="ld-time">
-                      <span>{span.latency_ms ?? 0} ms</span>
-                      {span.tokens_in != null && (
-                        <span>
-                          {span.tokens_in}/{span.tokens_out} tok
-                        </span>
-                      )}
-                      {span.cost_usd != null && <span>${span.cost_usd.toFixed(6)}</span>}
-                      <span style={{ color: span.status === 'ok' ? 'var(--green)' : 'var(--coral)' }}>{span.status}</span>
-                    </div>
-                    {span.error && (
-                      <>
-                        <div className="ld-sec">Error</div>
-                        <div className="kv" style={{ color: '#ffb4a6' }}>
-                          {span.error}
-                        </div>
-                      </>
-                    )}
-                    <div className="ld-sec">
-                      <Glyph name="caretD" size={13} />
-                      Input
-                    </div>
-                    <div className="kv" dangerouslySetInnerHTML={{ __html: colorJSON(span.inputs) || '—' }} />
-                    <div className="ld-sec">
-                      <Glyph name="caretD" size={13} />
-                      Output
-                    </div>
-                    <div className="kv" dangerouslySetInnerHTML={{ __html: colorJSON(span.outputs) || '—' }} />
-                  </>
-                )}
-              </div>
-            </>
-          )}
-        </div>
+        {trace ? <TraceView trace={trace} /> : <div className="logs-empty">Run the workflow to see a per-node trace here.</div>}
       </div>
     </div>
   )

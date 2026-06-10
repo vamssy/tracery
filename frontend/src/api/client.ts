@@ -3,6 +3,7 @@ import type {
   GraphSpec,
   KnowledgeBase,
   RunOut,
+  RunSummary,
   ValidateResult,
   Workflow,
   WorkflowSummary,
@@ -62,6 +63,7 @@ export const api = {
   run: (id: string, input: Record<string, any>) =>
     req<RunOut>(`/workflows/${id}/run`, { method: 'POST', headers: headers(), body: JSON.stringify({ input }) }),
   getRun: (id: string) => req<RunOut>(`/runs/${id}`, { headers: headers(false) }),
+  listRuns: (workflowId: string) => req<RunSummary[]>(`/workflows/${workflowId}/runs`, { headers: headers(false) }),
 
   // knowledge bases
   listKBs: () => req<KnowledgeBase[]>('/knowledge-bases', { headers: headers(false) }),

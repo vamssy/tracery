@@ -106,8 +106,15 @@ export const useCanvas = create<CanvasState>((set, get) => ({
   runStatuses: {},
   palette: null,
 
-  onNodesChange: (changes) => set({ nodes: applyNodeChanges(changes, get().nodes) as MdNode[], dirty: true }),
-  onEdgesChange: (changes) => set({ edges: applyEdgeChanges(changes, get().edges), dirty: true }),
+  onNodesChange: (changes) => {
+    // ignore non-edits (React Flow emits 'dimensions'/'select' on mount/click)
+    const edited = changes.some((c) => c.type !== 'dimensions' && c.type !== 'select')
+    set({ nodes: applyNodeChanges(changes, get().nodes) as MdNode[], ...(edited ? { dirty: true } : {}) })
+  },
+  onEdgesChange: (changes) => {
+    const edited = changes.some((c) => c.type !== 'select')
+    set({ edges: applyEdgeChanges(changes, get().edges), ...(edited ? { dirty: true } : {}) })
+  },
 
   onConnect: (conn) => {
     if (!get().isValidConnection(conn)) return

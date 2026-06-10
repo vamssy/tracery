@@ -7,7 +7,6 @@ export function BottomBar({
   onRun,
   onToggleChat,
   onTrash,
-  onSpark,
   onUndo,
   onTidy,
 }: {
@@ -16,7 +15,6 @@ export function BottomBar({
   onRun: () => void
   onToggleChat: () => void
   onTrash: () => void
-  onSpark: () => void
   onUndo: () => void
   onTidy: () => void
 }) {
@@ -55,9 +53,7 @@ export function BottomBar({
         </button>
       </div>
 
-      <button className="btn-spark" title="Ask Tracery AI" onClick={onSpark}>
-        <Glyph name="spark" size={18} />
-      </button>
+      <div style={{ width: 42 }} />
     </div>
   )
 }

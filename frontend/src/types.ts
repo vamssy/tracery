@@ -85,6 +85,14 @@ export interface RunOut {
   trace: TraceOut
 }
 
+export interface RunSummary {
+  run_id: string
+  status: string
+  total_latency_ms?: number | null
+  total_cost_usd?: number | null
+  created_at: string
+}
+
 export interface KnowledgeBase {
   id: string
   name: string

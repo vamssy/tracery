@@ -14,11 +14,8 @@ export function TopBar({
   onName,
   tag,
   tagKind,
-  active,
-  onToggleActive,
   dirty,
-  onShare,
-  onUndo,
+  onDeploy,
   menu,
   workflows,
   currentId,
@@ -28,11 +25,8 @@ export function TopBar({
   onName: (v: string) => void
   tag: string | null
   tagKind?: 'valid' | 'err' | null
-  active: boolean
-  onToggleActive: () => void
   dirty: boolean
-  onShare: () => void
-  onUndo: () => void
+  onDeploy: () => void
   menu: MenuItem[]
   workflows: WorkflowSummary[]
   currentId: string | null
@@ -41,26 +35,23 @@ export function TopBar({
   const [open, setOpen] = useState(false)
   return (
     <header className="topbar">
-      <span className="tb-logo">
-        <Glyph name="logo" size={22} stroke={2.2} />
+      <span className="brand">
+        <span className="tb-logo">
+          <Glyph name="logo" size={22} stroke={2.2} />
+        </span>
+        <span className="bw">Tracery</span>
       </span>
+      <span className="tb-sep" />
       <input className="wf-name" value={name} onChange={(e) => onName(e.target.value)} spellCheck={false} />
       {tag && <span className={`tag${tagKind ? ` ${tagKind}` : ''}`}>{tag}</span>}
 
       <div className="spacer" />
 
       <div className="tb-right">
-        <div className="active-wrap">
-          <span className={`lbl${active ? '' : ' off'}`}>{active ? 'Active' : 'Inactive'}</span>
-          <span className={`toggle${active ? '' : ' off'}`} onClick={onToggleActive} />
-        </div>
-        <button className="btn-share" onClick={onShare}>
-          <Glyph name="share" size={15} />
-          Share
-        </button>
         <span className="saved">{dirty ? 'Unsaved' : 'Saved'}</span>
-        <button className="icon-btn" title="Undo" onClick={onUndo}>
-          <Glyph name="history" size={17} />
+        <button className="btn-share" onClick={onDeploy}>
+          <Glyph name="rocket" size={15} />
+          Deploy
         </button>
         <div style={{ position: 'relative' }}>
           <button className="icon-btn" title="More" onClick={() => setOpen((o) => !o)}>

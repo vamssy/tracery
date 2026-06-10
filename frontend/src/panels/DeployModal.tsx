@@ -1,55 +1,46 @@
-import { useEffect, useState } from 'react'
-import { api } from '../api/client'
+import { useState } from 'react'
+import { Glyph } from '../icons'
 import type { DeployOut } from '../types'
-import { Modal } from './RunModal'
 
-export function DeployModal({ ensureSaved, onClose }: { ensureSaved: () => Promise<string | null>; onClose: () => void }) {
-  const [dep, setDep] = useState<DeployOut | null>(null)
-  const [error, setError] = useState<string | null>(null)
+export function DeployModal({ deploy, onClose }: { deploy: DeployOut; onClose: () => void }) {
   const [copied, setCopied] = useState<string | null>(null)
-
-  useEffect(() => {
-    ;(async () => {
-      try {
-        const id = await ensureSaved()
-        if (!id) throw new Error('save the workflow first')
-        setDep(await api.deploy(id))
-      } catch (e) {
-        setError((e as Error).message)
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   const copy = (label: string, text: string) => {
     navigator.clipboard?.writeText(text)
     setCopied(label)
     setTimeout(() => setCopied(null), 1200)
   }
-
   return (
-    <Modal title="Deploy" onClose={onClose} wide>
-      {error && <div className="run__error">{error}</div>}
-      {!dep && !error && <div className="muted">Deploying…</div>}
-      {dep && (
-        <div className="deploy">
-          <p className="deploy__lede">
-            Your workflow's graph spec is <b>frozen</b> and live at the endpoint below. The API key is shown once.
-          </p>
-
-          <Row label="Endpoint" value={dep.endpoint_url} copied={copied} onCopy={copy} />
-          <Row label="API key" value={dep.api_key} copied={copied} onCopy={copy} secret />
-
-          <div className="field__label" style={{ marginTop: 14 }}>
-            curl
-            <button className="btn btn--ghost btn--sm" style={{ marginLeft: 8 }} onClick={() => copy('curl', dep.curl)}>
-              {copied === 'curl' ? 'copied' : 'copy'}
-            </button>
-          </div>
-          <pre className="io__pre deploy__curl">{dep.curl}</pre>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <span className="mh-t">
+            <Glyph name="rocket" size={18} />
+            Deployed
+          </span>
+          <button className="cfg-x" onClick={onClose}>
+            <Glyph name="x" size={15} />
+          </button>
         </div>
-      )}
-    </Modal>
+        <div className="modal-body">
+          <p className="lede">
+            Your workflow's graph spec is <b>frozen</b> and live at the endpoint below. The API key is shown once — copy it now.
+          </p>
+          <Row label="Endpoint" value={deploy.endpoint_url} copied={copied} onCopy={copy} />
+          <Row label="API key" value={deploy.api_key} secret copied={copied} onCopy={copy} />
+          <div className="kvrow">
+            <span className="kr-l">
+              curl
+              <button className="btn-mini" style={{ marginLeft: 8, height: 22 }} onClick={() => copy('curl', deploy.curl)}>
+                {copied === 'curl' ? 'copied' : 'copy'}
+              </button>
+            </span>
+            <div className="kv" style={{ whiteSpace: 'pre', overflowX: 'auto' }}>
+              {deploy.curl}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -67,12 +58,12 @@ function Row({
   onCopy: (l: string, v: string) => void
 }) {
   return (
-    <div className="deploy__row">
-      <div className="field__label">{label}</div>
-      <div className="deploy__value">
+    <div className="kvrow">
+      <span className="kr-l">{label}</span>
+      <div className="kr-v">
         <code className={secret ? 'secret' : ''}>{value}</code>
-        <button className="btn btn--ghost btn--sm" onClick={() => onCopy(label, value)}>
-          {copied === label ? 'copied' : 'copy'}
+        <button className="btn-mini" onClick={() => onCopy(label, value)}>
+          {copied === label ? 'copied' : <Glyph name="copy" size={13} />}
         </button>
       </div>
     </div>

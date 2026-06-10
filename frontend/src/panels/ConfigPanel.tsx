@@ -1,109 +1,233 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
-import { NODE_DEFS, templateVars } from '../canvas/nodeDefs'
+import { type FieldDef, NODE_DEFS } from '../canvas/nodeDefs'
+import { Glyph, Icon } from '../icons'
 import { useCanvas } from '../store/store'
-import type { KnowledgeBase, PortType } from '../types'
+import type { KnowledgeBase } from '../types'
 
-const MODEL_SUGGESTIONS = [
-  'anthropic/claude-3-5-sonnet-latest',
-  'openai/gpt-4o-mini',
-  'openai/gpt-4o',
-  'groq/llama-3.3-70b-versatile',
-  'gemini/gemini-1.5-flash',
-]
-const FIELD_TYPES: PortType[] = ['string', 'number', 'json']
+function colorJSON(obj: any): string {
+  return JSON.stringify(obj, null, 2)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"([^"]+)":/g, '<span class="k">"$1"</span>:')
+    .replace(/: "([^"]*)"/g, ': <span class="s">"$1"</span>')
+    .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+}
 
-export function ConfigPanel() {
+export function ConfigPanel({ pushToast }: { pushToast: (t: { type: any; title: string; desc?: string }) => void }) {
   const selectedId = useCanvas((s) => s.selectedNodeId)
   const node = useCanvas((s) => s.nodes.find((n) => n.id === selectedId))
   const updateNodeConfig = useCanvas((s) => s.updateNodeConfig)
+  const updateNodeTitle = useCanvas((s) => s.updateNodeTitle)
   const deleteNode = useCanvas((s) => s.deleteNode)
+  const setSelected = useCanvas((s) => s.setSelected)
 
-  if (!node) {
-    return (
-      <aside className="config">
-        <div className="config__empty">Select a node to configure it.</div>
-      </aside>
-    )
-  }
-
+  if (!node) return null
   const def = NODE_DEFS[node.type!]
   const config = node.data.config
-  const update = (patch: Record<string, any>) => updateNodeConfig(node.id, { ...config, ...patch })
+  const update = (k: string, v: any) => updateNodeConfig(node.id, { ...config, [k]: v })
 
   return (
-    <aside className="config">
-      <div className="config__head">
-        <span className="config__badge" style={{ background: def.accent }}>
-          {def.label}
+    <aside className="cfg" key={node.id} style={{ ['--n-color' as any]: def.color }}>
+      <div className="cfg-head">
+        <span className="chip">
+          <Icon type={node.type!} size={20} />
         </span>
-        <button className="btn btn--ghost btn--sm" onClick={() => deleteNode(node.id)}>
-          Delete
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="ph-type">{def.label}</div>
+          <input
+            className="ph-title"
+            value={node.data.title}
+            spellCheck={false}
+            onChange={(e) => updateNodeTitle(node.id, e.target.value)}
+          />
+        </div>
+        <button className="cfg-x" onClick={() => setSelected(null)}>
+          <Glyph name="x" size={15} />
         </button>
       </div>
-      <div className="config__id">{node.id}</div>
 
-      {node.type === 'input' && <InputConfig config={config} update={update} />}
-      {node.type === 'retrieval' && <RetrievalConfig config={config} update={update} />}
-      {node.type === 'prompt' && <PromptConfig config={config} update={update} />}
-      {node.type === 'model' && <ModelConfig config={config} update={update} />}
-      {node.type === 'output' && <OutputConfig config={config} update={update} />}
-      {node.type === 'evaluator' && <EvaluatorConfig config={config} update={update} />}
-      {node.type === 'tool' && <ToolConfig config={config} update={update} />}
+      <div className="cfg-body">
+        {def.schema
+          .filter((f) => !f.showIf || f.showIf(config))
+          .map((f) => (
+            <Field key={f.k} def={f} value={config[f.k]} update={update} pushToast={pushToast} />
+          ))}
+        <div className="field">
+          <label>Resolved config</label>
+          <div className="kv" dangerouslySetInnerHTML={{ __html: colorJSON(config) }} />
+        </div>
+      </div>
+
+      <div className="cfg-foot">
+        <button className="btn-del" onClick={() => deleteNode(node.id)}>
+          <Glyph name="trash" size={14} />
+          Delete node
+        </button>
+      </div>
     </aside>
   )
 }
 
-type CfgProps = { config: Record<string, any>; update: (p: Record<string, any>) => void }
+function Field({
+  def,
+  value,
+  update,
+  pushToast,
+}: {
+  def: FieldDef
+  value: any
+  update: (k: string, v: any) => void
+  pushToast: (t: { type: any; title: string; desc?: string }) => void
+}) {
+  const set = (v: any) => update(def.k, v)
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="field">
-      <span className="field__label">{label}</span>
-      {children}
-    </label>
-  )
-}
+  if (def.t === 'kb') return <KBField def={def} value={value} set={set} pushToast={pushToast} />
 
-function InputConfig({ config, update }: CfgProps) {
-  const fields: any[] = config.fields || []
-  const setField = (i: number, patch: any) =>
-    update({ fields: fields.map((f, j) => (j === i ? { ...f, ...patch } : f)) })
-  return (
-    <div className="config__body">
-      <div className="field__label">Fields</div>
-      {fields.map((f, i) => (
-        <div className="rowfield" key={i}>
-          <input
-            className="input"
-            value={f.name}
-            onChange={(e) => setField(i, { name: e.target.value })}
-            placeholder="name"
-          />
-          <select className="input input--sm" value={f.type || 'string'} onChange={(e) => setField(i, { type: e.target.value })}>
-            {FIELD_TYPES.map((t) => (
-              <option key={t}>{t}</option>
-            ))}
-          </select>
-          <label className="chk" title="required">
-            <input type="checkbox" checked={f.required !== false} onChange={(e) => setField(i, { required: e.target.checked })} />
-          </label>
-          <button className="btn btn--ghost btn--sm" onClick={() => update({ fields: fields.filter((_, j) => j !== i) })}>
-            ✕
+  if (def.t === 'text')
+    return (
+      <Wrap def={def}>
+        <input className="inp" value={value || ''} spellCheck={false} onChange={(e) => set(e.target.value)} />
+      </Wrap>
+    )
+  if (def.t === 'number')
+    return (
+      <Wrap def={def}>
+        <input className="inp mono" type="number" value={value ?? ''} onChange={(e) => set(Number(e.target.value))} />
+      </Wrap>
+    )
+  if (def.t === 'csv')
+    return (
+      <Wrap def={def}>
+        <input
+          className="inp"
+          value={(value || []).join(', ')}
+          placeholder={def.placeholder}
+          spellCheck={false}
+          onChange={(e) => set(e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
+        />
+      </Wrap>
+    )
+  if (def.t === 'textarea')
+    return (
+      <Wrap def={def}>
+        <textarea className="ta" value={value || ''} spellCheck={false} onChange={(e) => set(e.target.value)} />
+      </Wrap>
+    )
+  if (def.t === 'select')
+    return (
+      <Wrap def={def}>
+        <select className="sel" value={value} onChange={(e) => set(e.target.value)}>
+          {def.opts!.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+      </Wrap>
+    )
+  if (def.t === 'combo')
+    return (
+      <Wrap def={def}>
+        <input
+          className="inp mono"
+          list={`dl-${def.k}`}
+          value={value || ''}
+          spellCheck={false}
+          onChange={(e) => set(e.target.value)}
+        />
+        <datalist id={`dl-${def.k}`}>
+          {def.opts!.map((o) => (
+            <option key={o} value={o} />
+          ))}
+        </datalist>
+      </Wrap>
+    )
+  if (def.t === 'segment')
+    return (
+      <Wrap def={def}>
+        <div className="seg">
+          {def.opts!.map((o) => (
+            <button key={o} className={value === o ? 'on' : ''} onClick={() => set(o)}>
+              {o}
+            </button>
+          ))}
+        </div>
+      </Wrap>
+    )
+  if (def.t === 'slider')
+    return (
+      <div className="field">
+        <label>
+          {def.label}
+          <span className="val">{value}</span>
+        </label>
+        <input
+          className="range"
+          type="range"
+          min={def.min}
+          max={def.max}
+          step={def.step}
+          value={value ?? def.min}
+          onChange={(e) => set(Number(e.target.value))}
+        />
+      </div>
+    )
+  if (def.t === 'fields') {
+    const rows: any[] = value || []
+    const setRow = (i: number, patch: any) => set(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+    return (
+      <Wrap def={def}>
+        <div className="flist">
+          {rows.map((r, i) => (
+            <div className="frow" key={i}>
+              <input className="inp" value={r.name} spellCheck={false} onChange={(e) => setRow(i, { name: e.target.value })} />
+              <select className="sel ftype" value={r.type} onChange={(e) => setRow(i, { type: e.target.value })}>
+                {['string', 'number', 'json'].map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+              <button className="del" onClick={() => set(rows.filter((_, j) => j !== i))} title="Remove">
+                <Glyph name="x" size={13} />
+              </button>
+            </div>
+          ))}
+          <button className="addrow" onClick={() => set([...rows, { name: `field${rows.length + 1}`, type: 'string', required: true }])}>
+            <Glyph name="plus" size={13} />
+            Add field
           </button>
         </div>
-      ))}
-      <button className="btn btn--sm" onClick={() => update({ fields: [...fields, { name: `field${fields.length + 1}`, type: 'string', required: true }] })}>
-        + Add field
-      </button>
+      </Wrap>
+    )
+  }
+  return null
+}
+
+function Wrap({ def, children }: { def: FieldDef; children: React.ReactNode }) {
+  return (
+    <div className="field">
+      <label>{def.label}</label>
+      {children}
     </div>
   )
 }
 
-function RetrievalConfig({ config, update }: CfgProps) {
+function KBField({
+  def,
+  value,
+  set,
+  pushToast,
+}: {
+  def: FieldDef
+  value: any
+  set: (v: any) => void
+  pushToast: (t: { type: any; title: string; desc?: string }) => void
+}) {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([])
-  const [ingestText, setIngestText] = useState('')
-  const [busy, setBusy] = useState<string | null>(null)
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
 
   const refresh = () => api.listKBs().then(setKbs).catch(() => {})
   useEffect(() => {
@@ -113,210 +237,62 @@ function RetrievalConfig({ config, update }: CfgProps) {
   const createKB = async () => {
     const name = prompt('Knowledge base name:')
     if (!name) return
-    const kb = await api.createKB(name)
-    await refresh()
-    update({ knowledge_base_id: kb.id })
+    try {
+      const kb = await api.createKB(name)
+      await refresh()
+      set(kb.id)
+      pushToast({ type: 'ok', title: 'Knowledge base created', desc: name })
+    } catch (e) {
+      pushToast({ type: 'err', title: 'Create failed', desc: (e as Error).message })
+    }
   }
 
-  const addDoc = async () => {
-    if (!config.knowledge_base_id || !ingestText.trim()) return
-    setBusy('ingest')
+  const ingest = async () => {
+    if (!value || !text.trim()) return
+    setBusy(true)
     try {
-      const r = await api.ingestText(config.knowledge_base_id, ingestText.trim())
-      setIngestText('')
+      const r = await api.ingestText(value, text.trim())
+      setText('')
       await refresh()
-      setBusy(`+${r.chunks_ingested} chunk(s)`)
-      setTimeout(() => setBusy(null), 1500)
-    } catch {
-      setBusy('error')
+      pushToast({ type: 'ok', title: 'Document ingested', desc: `+${r.chunks_ingested} chunk(s)` })
+    } catch (e) {
+      pushToast({ type: 'err', title: 'Ingest failed', desc: (e as Error).message })
+    } finally {
+      setBusy(false)
     }
   }
 
   return (
-    <div className="config__body">
-      <Field label="Knowledge base">
-        <div className="rowfield">
-          <select className="input" value={config.knowledge_base_id || ''} onChange={(e) => update({ knowledge_base_id: e.target.value })}>
-            <option value="">— select —</option>
-            {kbs.map((kb) => (
-              <option key={kb.id} value={kb.id}>
-                {kb.name} ({kb.chunk_count})
-              </option>
-            ))}
-          </select>
-          <button className="btn btn--sm" onClick={createKB}>
-            + New
-          </button>
-        </div>
-      </Field>
-      {config.knowledge_base_id && (
-        <Field label="Add a document">
-          <textarea
-            className="input input--area"
-            rows={4}
-            value={ingestText}
-            placeholder="Paste text to ingest into this KB…"
-            onChange={(e) => setIngestText(e.target.value)}
-          />
-          <button className="btn btn--sm" onClick={addDoc} disabled={busy === 'ingest'}>
-            {busy && busy !== 'ingest' ? busy : 'Ingest'}
-          </button>
-        </Field>
-      )}
-      <Field label="top_k">
-        <input className="input" type="number" min={1} value={config.top_k ?? 4} onChange={(e) => update({ top_k: Number(e.target.value) })} />
-      </Field>
-      <Field label="score_threshold">
-        <input
-          className="input"
-          type="number"
-          step={0.05}
-          value={config.score_threshold ?? 0}
-          onChange={(e) => update({ score_threshold: Number(e.target.value) })}
-        />
-      </Field>
-    </div>
-  )
-}
-
-function PromptConfig({ config, update }: CfgProps) {
-  const vars = templateVars(config.template || '')
-  return (
-    <div className="config__body">
-      <Field label="Template">
-        <textarea
-          className="input input--area mono"
-          rows={8}
-          value={config.template || ''}
-          onChange={(e) => update({ template: e.target.value })}
-        />
-      </Field>
-      <div className="field__label">Detected variables → input ports</div>
-      <div className="chips">
-        {vars.length ? vars.map((v) => <span className="chip" key={v}>{v}</span>) : <span className="muted">none</span>}
-      </div>
-    </div>
-  )
-}
-
-function ModelConfig({ config, update }: CfgProps) {
-  return (
-    <div className="config__body">
-      <Field label="Model (LiteLLM id)">
-        <input className="input" list="model-suggestions" value={config.model || ''} onChange={(e) => update({ model: e.target.value })} />
-        <datalist id="model-suggestions">
-          {MODEL_SUGGESTIONS.map((m) => (
-            <option key={m} value={m} />
+    <div className="field">
+      <label>{def.label}</label>
+      <div className="kbrow">
+        <select className="sel" value={value || ''} onChange={(e) => set(e.target.value)}>
+          <option value="">— select —</option>
+          {kbs.map((kb) => (
+            <option key={kb.id} value={kb.id}>
+              {kb.name} ({kb.chunk_count})
+            </option>
           ))}
-        </datalist>
-      </Field>
-      <Field label="Temperature">
-        <input className="input" type="number" step={0.1} min={0} max={2} value={config.temperature ?? 0.2} onChange={(e) => update({ temperature: Number(e.target.value) })} />
-      </Field>
-      <Field label="Max tokens">
-        <input className="input" type="number" min={1} value={config.max_tokens ?? 1024} onChange={(e) => update({ max_tokens: Number(e.target.value) })} />
-      </Field>
-      <Field label="System prompt">
-        <textarea className="input input--area" rows={4} value={config.system_prompt || ''} onChange={(e) => update({ system_prompt: e.target.value })} />
-      </Field>
-      <Field label="Response format">
-        <select className="input" value={config.response_format || 'text'} onChange={(e) => update({ response_format: e.target.value })}>
-          <option value="text">text</option>
-          <option value="json">json</option>
         </select>
-      </Field>
-    </div>
-  )
-}
-
-function OutputConfig({ config, update }: CfgProps) {
-  return (
-    <div className="config__body">
-      <Field label="Format">
-        <select className="input" value={config.format || 'text'} onChange={(e) => update({ format: e.target.value })}>
-          <option value="text">text</option>
-          <option value="json">json</option>
-        </select>
-      </Field>
-    </div>
-  )
-}
-
-function EvaluatorConfig({ config, update }: CfgProps) {
-  const strategy = config.strategy || 'keyword'
-  const criteriaHint =
-    strategy === 'keyword'
-      ? 'comma-separated keywords'
-      : strategy === 'regex'
-        ? 'a regular expression'
-        : 'what a good answer looks like'
-  return (
-    <div className="config__body">
-      <Field label="Strategy">
-        <select className="input" value={strategy} onChange={(e) => update({ strategy: e.target.value })}>
-          <option value="keyword">keyword</option>
-          <option value="regex">regex</option>
-          <option value="llm_judge">llm_judge</option>
-        </select>
-      </Field>
-      <Field label={`Criteria · ${criteriaHint}`}>
-        <textarea
-          className="input input--area"
-          rows={3}
-          value={config.criteria || ''}
-          onChange={(e) => update({ criteria: e.target.value })}
-        />
-      </Field>
-      <Field label="Pass threshold">
-        <input
-          className="input"
-          type="number"
-          step={0.05}
-          min={0}
-          max={1}
-          value={config.pass_threshold ?? 0.5}
-          onChange={(e) => update({ pass_threshold: Number(e.target.value) })}
-        />
-      </Field>
-      {strategy === 'llm_judge' && (
-        <Field label="Judge model (LiteLLM id)">
-          <input className="input" value={config.model || ''} placeholder="(default)" onChange={(e) => update({ model: e.target.value })} />
-        </Field>
-      )}
-    </div>
-  )
-}
-
-function ToolConfig({ config, update }: CfgProps) {
-  const tool = config.tool || 'calculator'
-  return (
-    <div className="config__body">
-      <Field label="Tool">
-        <select className="input" value={tool} onChange={(e) => update({ tool: e.target.value })}>
-          <option value="calculator">calculator</option>
-          <option value="http_get">http_get</option>
-        </select>
-      </Field>
-      {tool === 'http_get' && (
+        <button className="btn-mini" onClick={createKB}>
+          + New
+        </button>
+      </div>
+      {value && (
         <>
-          <Field label="Allowed domains · comma-separated">
-            <input
-              className="input"
-              value={(config.allowed_domains || []).join(', ')}
-              placeholder="example.com, api.example.com"
-              onChange={(e) => update({ allowed_domains: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })}
-            />
-          </Field>
-          <Field label="Timeout (s)">
-            <input className="input" type="number" min={1} value={config.timeout ?? 10} onChange={(e) => update({ timeout: Number(e.target.value) })} />
-          </Field>
+          <textarea
+            className="ta"
+            style={{ minHeight: 60 }}
+            value={text}
+            placeholder="Paste text to ingest into this KB…"
+            onChange={(e) => setText(e.target.value)}
+          />
+          <button className="addrow" onClick={ingest} disabled={busy}>
+            <Glyph name="plus" size={13} />
+            {busy ? 'Ingesting…' : 'Ingest document'}
+          </button>
         </>
       )}
-      <div className="muted" style={{ fontSize: 12 }}>
-        {tool === 'calculator'
-          ? 'Wire a string into `expression`. Safe arithmetic only.'
-          : 'Wire a string into `url`. Only allow-listed domains are fetched.'}
-      </div>
     </div>
   )
 }

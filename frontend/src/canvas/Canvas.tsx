@@ -1,18 +1,22 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
-  MiniMap,
   ReactFlow,
   useReactFlow,
 } from '@xyflow/react'
-import { useCallback } from 'react'
+import { useState } from 'react'
+import { Popover } from '../components/Popover'
+import { Glyph } from '../icons'
 import { useCanvas } from '../store/store'
-import { NODE_DEFS } from './nodeDefs'
-import { CustomNode } from './CustomNode'
+import { NODE_DEFS, shapeFor } from './nodeDefs'
+import { TraceryEdge } from './TraceryEdge'
+import { TraceryNode } from './TraceryNode'
 
-// nodeTypes must be referentially stable across renders
-const nodeTypes = Object.fromEntries(Object.keys(NODE_DEFS).map((t) => [t, CustomNode]))
+const nodeTypes = Object.fromEntries(Object.keys(NODE_DEFS).map((t) => [t, TraceryNode]))
+const edgeTypes = { tracery: TraceryEdge }
+const defaultEdgeOptions = { type: 'tracery' }
+
+const TABS = ['Editor', 'Executions', 'Tests']
 
 export function Canvas() {
   const { screenToFlowPosition } = useReactFlow()
@@ -22,40 +26,68 @@ export function Canvas() {
   const onEdgesChange = useCanvas((s) => s.onEdgesChange)
   const onConnect = useCanvas((s) => s.onConnect)
   const isValidConnection = useCanvas((s) => s.isValidConnection)
-  const addNode = useCanvas((s) => s.addNode)
   const setSelected = useCanvas((s) => s.setSelected)
+  const addNode = useCanvas((s) => s.addNode)
+  const palette = useCanvas((s) => s.palette)
+  const openPalette = useCanvas((s) => s.openPalette)
+  const closePalette = useCanvas((s) => s.closePalette)
+  const [tab, setTab] = useState('Editor')
 
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      const type = e.dataTransfer.getData('application/tracery')
-      if (!type) return
-      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      addNode(type, position)
-    },
-    [screenToFlowPosition, addNode],
-  )
+  const pick = (type: string) => {
+    const pal = useCanvas.getState().palette
+    if (!pal) return
+    if (pal.from) {
+      const src = useCanvas.getState().nodes.find((n) => n.id === pal.from)
+      const pos = src
+        ? { x: src.position.x + (shapeFor(src.type!) === 'circle' ? 70 : 104) + 96, y: src.position.y }
+        : screenToFlowPosition({ x: pal.sx, y: pal.sy })
+      addNode(type, pos, pal.from)
+    } else {
+      addNode(type, screenToFlowPosition({ x: pal.sx, y: pal.sy }), null)
+    }
+    closePalette()
+  }
 
   return (
-    <div className="canvas" onDrop={onDrop} onDragOver={(e) => (e.preventDefault(), (e.dataTransfer.dropEffect = 'move'))}>
+    <>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         onNodeClick={(_, n) => setSelected(n.id)}
-        onPaneClick={() => setSelected(null)}
-        defaultEdgeOptions={{ animated: true, style: { stroke: '#64748b', strokeWidth: 2 } }}
+        onPaneClick={() => {
+          setSelected(null)
+          closePalette()
+        }}
+        minZoom={0.3}
+        maxZoom={2.4}
         fitView
+        fitViewOptions={{ padding: 0.3 }}
         proOptions={{ hideAttribution: true }}
+        deleteKeyCode={null}
       >
-        <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="#27324a" />
-        <Controls showInteractive={false} />
-        <MiniMap pannable zoomable nodeColor={(n) => NODE_DEFS[n.type!]?.accent ?? '#64748b'} maskColor="rgba(10,14,24,0.7)" />
+        <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgba(255,255,255,0.05)" />
       </ReactFlow>
-    </div>
+
+      <div className="cv-tabs">
+        {TABS.map((t) => (
+          <button key={t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)}>
+            {t}
+          </button>
+        ))}
+      </div>
+      <button className="cv-add" title="Add node" onClick={(e) => openPalette(e.clientX, e.clientY + 10, null)}>
+        <Glyph name="plus" size={18} />
+      </button>
+      {!nodes.length && <div className="cv-hint">Press + to add your first node.</div>}
+
+      {palette && <Popover sx={palette.sx} sy={palette.sy} onPick={pick} onClose={closePalette} />}
+    </>
   )
 }

@@ -26,3 +26,8 @@ pgdata/
 
 # Logs
 *.log
+
+# UI inspiration / reference material (not part of the app)
+tracery_UI_inspo/
+Tracery Workflow.html
+Project Homepage.zip

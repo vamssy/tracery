@@ -103,7 +103,19 @@ class LiteLLMProvider(ProviderLayer):
         return [d["embedding"] for d in resp.data]
 
 
+class HybridProvider(LiteLLMProvider):
+    """Real chat via LiteLLM, deterministic local embeddings — so a chat-only
+    provider (e.g. Groq) works for RAG without a separate embedding-model key,
+    and stays consistent with KBs ingested by the mock embedder."""
+
+    async def embed(self, model: str, texts: list[str]) -> list[list[float]]:
+        return [_hash_embedding(t, settings.embedding_dim) for t in texts]
+
+
 def get_provider() -> ProviderLayer:
-    if settings.llm_provider.lower() == "litellm":
+    provider = settings.llm_provider.lower()
+    if provider == "litellm":
         return LiteLLMProvider()
+    if provider == "hybrid":
+        return HybridProvider()
     return MockProvider()

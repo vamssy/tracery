@@ -230,10 +230,10 @@ export default function App() {
     const st = useCanvas.getState()
     const fields: any[] = st.nodes.find((n) => n.type === 'input')?.data.config.fields || []
     const input: Record<string, any> = {}
-    fields.forEach((f, i) => {
-      const raw = i === 0 ? inputText : ''
-      input[f.name] = f.type === 'number' ? (raw === '' ? 0 : Number(raw)) : raw
-    })
+    // the chat has one box, so fill the first field with the message; any other
+    // fields are omitted so the backend falls back to their configured defaults.
+    const first = fields[0]
+    if (first) input[first.name] = first.type === 'number' ? (inputText === '' ? 0 : Number(inputText)) : inputText
     return input
   }
 

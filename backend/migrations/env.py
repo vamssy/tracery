@@ -11,7 +11,7 @@ from sqlalchemy.pool import NullPool
 # import models so Base.metadata is populated
 import app.models  # noqa: F401,E402
 from app.config import settings
-from app.db import Base, prepare_async_dsn
+from app.db import Base, prepare_async_dsn, ssl_connect_args
 
 config = context.config
 config.set_main_option("sqlalchemy.url", prepare_async_dsn(settings.database_url))
@@ -33,6 +33,7 @@ async def run_async_migrations() -> None:
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
         poolclass=NullPool,
+        connect_args=ssl_connect_args(settings.database_url),
     )
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)
